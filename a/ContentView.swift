@@ -46,6 +46,7 @@ struct WebView: UIViewRepresentable {
     let urlString: String
     let cornerRadius: CGFloat
     
+    
     func makeUIView(context: Context) -> WKWebView {
         let webView = WKWebView()
         

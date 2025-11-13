@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import UIKit
 
 struct URLBarView: View {
     // @EnvironmentObject finds and connects to the SettingsManager
@@ -13,40 +14,36 @@ struct URLBarView: View {
     @EnvironmentObject var settingsManager: SettingsManager
     
     @State private var urlText: String = "https://arc.net"
-    
-    @FocusState private var isTextFieldFocused: Bool
-    
+        
     var onURLSubmit: (String) -> Void
     
     var body: some View {
         // We now access the settings via 'settingsManager.settings'
         let settings = settingsManager.settings
         
-        ZStack {
-            TextField("URL", text: $urlText)
-                .textFieldStyle(.plain)
-                .padding(.horizontal)
-                .focused($isTextFieldFocused)
-                .onSubmit {
-                    handleSubmit()
+        TextField("URL", text: $urlText)
+            .textFieldStyle(.plain)
+        
+            .padding(.horizontal)
+            .frame(height: settings.heightForLayer(layer: 1))
+            .glassEffect(.regular.interactive(), in: .rect(cornerRadius: settings.cornerRadiusForLayer(layer: 1)))
+            .padding(settings.paddingDp)
+            .onSubmit {
+                handleSubmit()
+            }
+
+            .submitLabel(.go)
+        
+            .onReceive(NotificationCenter.default.publisher(for: UITextField.textDidBeginEditingNotification)) { notification in
+                if let textField = notification.object as? UITextField {
+                    // Tell that text field to select all of its content.
+                    textField.selectAll(nil)
                 }
-                .submitLabel(.go)
-        }
-        .frame(height: settings.heightForLayer(layer: 1))
-        .glassEffect(.regular, in: .rect(cornerRadius: settings.cornerRadiusForLayer(layer: 1)))
-        .padding(settings.paddingDp)
-        .onTapGesture {
-            isTextFieldFocused = true
-        }
-        
-        
-        
+            }
     }
     
     private func handleSubmit() {
         // Dismiss the keyboard
-        isTextFieldFocused = false
-        
         let inputText = urlText.trimmingCharacters(in: .whitespacesAndNewlines)
         if inputText.isEmpty { return }
         
