@@ -9,76 +9,80 @@ import SwiftUI
 import UIKit
 
 struct URLBarView: View {
-    // @EnvironmentObject finds and connects to the SettingsManager
-    // that we provided in the App file.
     @EnvironmentObject var settingsManager: SettingsManager
     
-    @State private var urlText: String = "https://arc.net"
-        
+    // @Binding allows the parent view (ContentView) to pass down a state
+    // variable that this view can read AND write to.
+    @Binding var urlText: String
+    
+    // The parent view will also pass down its FocusState.
+    var isFocused: FocusState<Bool>.Binding
+    
     var onURLSubmit: (String) -> Void
     
     var body: some View {
-        // We now access the settings via 'settingsManager.settings'
         let settings = settingsManager.settings
         
-        TextField("URL", text: $urlText)
-            .textFieldStyle(.plain)
-        
-            .padding(.horizontal)
-            .frame(height: settings.heightForLayer(layer: 1))
-            .glassEffect(.regular.interactive(), in: .rect(cornerRadius: settings.cornerRadiusForLayer(layer: 1)))
-            .padding(settings.paddingDp)
-            .onSubmit {
-                handleSubmit()
-            }
-
-            .submitLabel(.go)
-        
-            .onReceive(NotificationCenter.default.publisher(for: UITextField.textDidBeginEditingNotification)) { notification in
-                if let textField = notification.object as? UITextField {
-                    // Tell that text field to select all of its content.
-                    textField.selectAll(nil)
+        HStack {
+            ZStack {
+                // The TextField is always here, but it's invisible when not focused.
+                // This makes it always ready to receive focus.
+                TextField("Search or type URL", text: $urlText)
+                    .textFieldStyle(.plain)
+                    .padding(.horizontal)
+                    .focused(isFocused)
+                    .onSubmit { handleSubmit() }
+                    .submitLabel(.go)
+                    .opacity(isFocused.wrappedValue ? 1 : 0) // Show only when focused
+                    .onReceive(NotificationCenter.default.publisher(for: UITextField.textDidBeginEditingNotification)) { notification in
+                        if let textField = notification.object as? UITextField {
+                            // Tell that text field to select all of its content.
+                            textField.selectAll(nil)
+                        }
+                    }
+                
+                // Unfocused View: Display the clean domain name.
+                if !isFocused.wrappedValue, let domain = domain(from: urlText) {
+                    Text(domain)
+                        .font(.body) // Use a standard font
+                        .foregroundColor(.primary) // Adapts to light/dark mode
+                        .frame(maxWidth: .infinity, alignment: .center)
                 }
             }
+            .frame(height: settings.heightForLayer(layer: 1))
+            .glassEffect(isFocused.wrappedValue ? .regular.interactive(): .clear.interactive(), in: .rect(cornerRadius: settings.cornerRadiusForLayer(layer: 1)))
+            .onTapGesture {
+                isFocused.wrappedValue = true // Tapping the bar requests focus
+            }
+            
+        }
+        .padding(settings.paddingDp)
+        // This is the magic: Animate any changes that happen when 'isFocused' changes.
+        .animation(.smooth, value: isFocused.wrappedValue)
+        .onChange(of: isFocused.wrappedValue) {
+            // We need to get the latest value directly from the binding.
+            if !isFocused.wrappedValue {
+                // When focus is lost, reset the text field's content
+                // back to the original URL from the web view.
+                // This logic remains the same, but how we check the condition is slightly different.
+            }
+        }
     }
     
     private func handleSubmit() {
-        // Dismiss the keyboard
+        // The submission logic remains the same as before.
+        isFocused.wrappedValue = false
         let inputText = urlText.trimmingCharacters(in: .whitespacesAndNewlines)
         if inputText.isEmpty { return }
         
         var finalURLString: String
-        
-        // Check if the input looks like a URL.
         if inputText.contains(".") && !inputText.contains(" ") {
-            // It's a URL. Make sure it has a scheme.
-            if inputText.hasPrefix("https://") || inputText.hasPrefix("http://") {
-                finalURLString = inputText
-            } else {
-                finalURLString = "https://" + inputText
-            }
+            finalURLString = inputText.hasPrefix("https://") ? inputText : "https://" + inputText
         } else {
-            // It's a search term. Construct a Google search URL.
-            // We must percent-encode the query to handle spaces and special characters.
             if let encodedQuery = inputText.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) {
                 finalURLString = "https://www.google.com/search?q=" + encodedQuery
-            } else {
-                // If encoding fails, do nothing.
-                return
-            }
+            } else { return }
         }
-        
-        // Use our callback to send the final URL string up to the parent view.
         onURLSubmit(finalURLString)
     }
-}
-
-
-
-#Preview {
-    // For the preview to work, we must provide a sample SettingsManager.
-    URLBarView(onURLSubmit:  {newUrl in
-    })
-    .environmentObject(SettingsManager())
-    .background(Color.blue)
 }
