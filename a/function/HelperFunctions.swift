@@ -7,6 +7,9 @@
 
 import Foundation
 
+/**
+    Extract the domain to display shorten url
+ */
 func domain(from urlString: String) -> String? {
     guard let url = URL(string: urlString), let host = url.host else {
         return nil
