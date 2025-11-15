@@ -34,6 +34,7 @@ struct ContentView: View {
             
         }
         .statusBarHidden()
+        .background(.black)
         .onAppear {
             if statesManager.states.currentUrl.isEmpty {
                 statesManager.states.currentUrl = settingsManager.settings.defaultUrl

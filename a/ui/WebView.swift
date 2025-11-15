@@ -14,7 +14,7 @@ struct WebView: UIViewRepresentable {
     @Environment(StatesManager.self) private var statesManager
     
     
-    // --- UPDATED makeCoordinator ---
+    //  makeCoordinator ---
     func makeCoordinator() -> Coordinator {
         Coordinator(parent: self) // Now explicitly calls the init
     }

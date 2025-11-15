@@ -11,14 +11,14 @@ struct UrlBarView: View {
     @Environment(SettingsManager.self) private var settingsManager
     @Environment(StatesManager.self) private var statesManager
     
- 
+    
     
     var isFocused: FocusState<Bool>.Binding
     @State private var urlText: String = ""
-
+    
     var body: some View {
         let settings = settingsManager.settings
-
+        
         ZStack {
             // UrlBar not focus -> invisible but still there to receive the tap event
             TextField("Search or type URL", text: $urlText)
@@ -27,7 +27,7 @@ struct UrlBarView: View {
                 .focused(isFocused)
                 .onSubmit { handleSubmit() }
                 .submitLabel(.go)
-                .frame(height: settings.heightForLayer(layer: 1))
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
                 .opacity(isFocused.wrappedValue ? 1 : 0) // show only when focused
                 .onTapGesture {
                     isFocused.wrappedValue = true
@@ -45,7 +45,7 @@ struct UrlBarView: View {
                 Text(domain)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
                     .font(.body)
-                    .foregroundColor(.primary)
+                    .foregroundColor(.secondary)
                     .onTapGesture {
                         isFocused.wrappedValue = true
                         print("Tap on domain")
@@ -64,6 +64,11 @@ struct UrlBarView: View {
         }
         .onChange(of: statesManager.states.currentUrl) { oldValue, newValue in
             urlText = newValue
+        }
+        .onChange(of: isFocused.wrappedValue){
+            if ($urlText.wrappedValue != statesManager.states.currentUrl) {
+                $urlText.wrappedValue = statesManager.states.currentUrl
+            }
         }
     }
     
