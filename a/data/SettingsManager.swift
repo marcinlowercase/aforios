@@ -10,7 +10,7 @@ import Combine
 import SwiftUI
 
 struct BrowserSettings {
-    let paddingDp: CGFloat
+    let padding: CGFloat
     let deviceCornerRadius: CGFloat
     let defaultUrl: String
     let animationSpeed: CGFloat
@@ -32,7 +32,7 @@ class SettingsManager {
     }
     
     private enum Keys {
-        static let paddingDp = "padding_dp"
+        static let padding = "padding_dp"
         static let deviceCornerRadius = "corner_radius_dp"
         static let defaultUrl = "default_url"
         static let animationSpeed = "animation_speed"
@@ -41,14 +41,14 @@ class SettingsManager {
     
     init() {
         let defaults = UserDefaults.standard
-        let padding = defaults.double(forKey: Keys.paddingDp) == 0 ? 8.0 : defaults.double(forKey: Keys.paddingDp)
+        let padding = defaults.double(forKey: Keys.padding) == 0 ? 8.0 : defaults.double(forKey: Keys.padding)
         let cornerRadius = defaults.double(forKey: Keys.deviceCornerRadius) == 0 ? 54.85 : defaults.double(forKey: Keys.deviceCornerRadius)
         let url = defaults.string(forKey: Keys.defaultUrl) ?? "https://arc.net"
         let speed = defaults.double(forKey: Keys.animationSpeed) == 0 ? 300.0 : defaults.double(forKey: Keys.animationSpeed)
         let height = defaults.double(forKey: Keys.minBaseCornerRadius) == 0 ? 50.0 : defaults.double(forKey: Keys.minBaseCornerRadius)
         
         self.settings = BrowserSettings(
-            paddingDp: padding,
+            padding: padding,
             deviceCornerRadius: cornerRadius,
             defaultUrl: url,
             animationSpeed: speed,
@@ -58,7 +58,7 @@ class SettingsManager {
     
     private func save() {
         let defaults = UserDefaults.standard
-        defaults.set(settings.paddingDp, forKey: Keys.paddingDp)
+        defaults.set(settings.padding, forKey: Keys.padding)
         defaults.set(settings.deviceCornerRadius, forKey: Keys.deviceCornerRadius)
         defaults.set(settings.defaultUrl, forKey: Keys.defaultUrl)
         defaults.set(settings.animationSpeed, forKey: Keys.animationSpeed)

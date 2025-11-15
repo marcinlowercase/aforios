@@ -26,9 +26,15 @@ struct ContentView: View {
             
             VStack {
                 Spacer()
-                BottomPanelView(
-                    isURLBarFocused : $isURLBarFocused,
-                )
+                if (statesManager.uiStates.isBottomPanelVisible) {
+                    BottomPanelView(
+                        isURLBarFocused : $isURLBarFocused,
+                    )
+                } else {
+                    BackSquareView()
+                }
+                
+                
             }
             .ignoresSafeArea(.container)
             
@@ -36,8 +42,8 @@ struct ContentView: View {
         .statusBarHidden()
         .background(.black)
         .onAppear {
-            if statesManager.states.currentUrl.isEmpty {
-                statesManager.states.currentUrl = settingsManager.settings.defaultUrl
+            if statesManager.persistentStates.currentUrl.isEmpty {
+                statesManager.persistentStates.currentUrl = settingsManager.settings.defaultUrl
             }
         }
     }

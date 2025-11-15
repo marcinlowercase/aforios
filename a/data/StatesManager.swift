@@ -9,11 +9,15 @@ import Foundation
 import Combine
 import SwiftUI
 
-struct BrowserStates {
+// Holds all state that should be SAVED and restored across app launches.
+struct PersistentStates {
     var currentUrl: String
     // need more element
 }
 
+struct UIStates {
+    var isBottomPanelVisible: Bool = true
+}
 
 
 // single state to pass down the whole app
@@ -21,11 +25,13 @@ struct BrowserStates {
 @Observable
 class StatesManager {
     
-    var states: BrowserStates {
+    var persistentStates: PersistentStates {
         didSet {
             save()
         }
     }
+    
+    var uiStates: UIStates
     
     private enum Keys {
         static let currentUrl = "current_url"
@@ -37,15 +43,16 @@ class StatesManager {
         
         let currentUrl = defaults.string(forKey: Keys.currentUrl) ?? ""
         
-        self.states = BrowserStates(
+        self.persistentStates = PersistentStates(
             currentUrl: currentUrl
         )
+        self.uiStates = UIStates()
     }
     
     private func save() {
         let defaults = UserDefaults.standard
-        defaults.set(states.currentUrl, forKey: Keys.currentUrl)
-        print("Browser states saved.")
+        defaults.set(persistentStates.currentUrl, forKey: Keys.currentUrl)
+        print("Browser persistent states saved.")
     }
 }
 

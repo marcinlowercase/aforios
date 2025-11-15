@@ -20,7 +20,6 @@ struct BottomPanelView: View {
 
     
     var body: some View {
-        let settings = settingsManager.settings
         
         VStack {
             
@@ -29,7 +28,7 @@ struct BottomPanelView: View {
             )
             
         }
-        .padding(settings.paddingDp)
+        .padding(settingsManager.settings.padding)
         
         // like LaunchedEffect in Compose
         .onChange(of: isURLBarFocused.wrappedValue) {

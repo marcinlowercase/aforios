@@ -21,7 +21,7 @@ extension BrowserSettings {
         }
         
         let previousLayerRadius = self.cornerRadiusForLayer(layer: layer - 1)
-        return max(0, previousLayerRadius - self.paddingDp)
+        return max(0, previousLayerRadius - self.padding)
     }
 
     /// Calculates the height for a UI layer based on the current corner radius.
@@ -31,7 +31,7 @@ extension BrowserSettings {
         } else {
            
             let tempSettings = BrowserSettings(
-                paddingDp: self.paddingDp,
+                padding: self.padding,
                 deviceCornerRadius: self.minBaseCornerRadius, // Temporary hardcoded radius for this specific case
                 defaultUrl: self.defaultUrl,
                 animationSpeed: self.animationSpeed,

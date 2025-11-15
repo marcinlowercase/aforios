@@ -17,7 +17,6 @@ struct UrlBarView: View {
     @State private var urlText: String = ""
     
     var body: some View {
-        let settings = settingsManager.settings
         
         ZStack {
             // UrlBar not focus -> invisible but still there to receive the tap event
@@ -54,20 +53,20 @@ struct UrlBarView: View {
                 
             }
         }
-        .frame(height: settings.heightForLayer(layer: 1))
-        .glassEffect(isFocused.wrappedValue ? .regular.interactive(): .clear.interactive(), in: .rect(cornerRadius: settings.cornerRadiusForLayer(layer: 1)))
+        .frame(height: settingsManager.settings.heightForLayer(layer: 1))
+        .glassEffect(isFocused.wrappedValue ? .regular.interactive(): .clear.interactive(), in: .rect(cornerRadius: settingsManager.settings.cornerRadiusForLayer(layer: 1)))
         .onTapGesture {
             isFocused.wrappedValue = true
         }
         .onAppear{
-            $urlText.wrappedValue = statesManager.states.currentUrl
+            $urlText.wrappedValue = statesManager.persistentStates.currentUrl
         }
-        .onChange(of: statesManager.states.currentUrl) { oldValue, newValue in
+        .onChange(of: statesManager.persistentStates.currentUrl) { oldValue, newValue in
             urlText = newValue
         }
         .onChange(of: isFocused.wrappedValue){
-            if ($urlText.wrappedValue != statesManager.states.currentUrl) {
-                $urlText.wrappedValue = statesManager.states.currentUrl
+            if ($urlText.wrappedValue != statesManager.persistentStates.currentUrl) {
+                $urlText.wrappedValue = statesManager.persistentStates.currentUrl
             }
         }
     }
@@ -88,7 +87,7 @@ struct UrlBarView: View {
             } else { return }
         }
         
-        statesManager.states.currentUrl = finalURLString
+        statesManager.persistentStates.currentUrl = finalURLString
         $urlText.wrappedValue = finalURLString
         
         
