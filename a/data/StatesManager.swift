@@ -12,6 +12,7 @@ import SwiftUI
 // Holds all state that should be SAVED and restored across app launches.
 struct PersistentStates {
     var currentUrl: String
+    var isBackSquareLeft: Bool = false 
     // need more element
 }
 

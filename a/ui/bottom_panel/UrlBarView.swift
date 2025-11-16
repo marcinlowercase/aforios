@@ -53,11 +53,17 @@ struct UrlBarView: View {
                 
             }
         }
+        .gesture(
+            DragGesture(minimumDistance: 0) // minimumDistance: 0 lets it detect taps
+                .onEnded { value in
+                    // This code runs when the user lifts their finger.
+                    handleGesture(value)
+                }
+        )
         .frame(height: settingsManager.settings.heightForLayer(layer: 1))
         .glassEffect(isFocused.wrappedValue ? .regular.interactive(): .clear.interactive(), in: .rect(cornerRadius: settingsManager.settings.cornerRadiusForLayer(layer: 1)))
-        .onTapGesture {
-            isFocused.wrappedValue = true
-        }
+        
+        
         .onAppear{
             $urlText.wrappedValue = statesManager.persistentStates.currentUrl
         }
@@ -70,6 +76,43 @@ struct UrlBarView: View {
             }
         }
     }
+    
+    private func handleGesture(_ value: DragGesture.Value) {
+        
+            print("handleGesture")
+            let horizontalAmount = value.translation.width
+            let verticalAmount = value.translation.height
+            
+            // --- Tap Detection ---
+            // If the finger moved less than a tiny amount, we treat it as a tap.
+            if abs(horizontalAmount) < 10 && abs(verticalAmount) < 10 {
+                print("Gesture: TAP")
+                isFocused.wrappedValue = true
+                return // We're done
+            }
+            
+            // --- Swipe Detection ---
+            // Check if the swipe was primarily vertical or horizontal.
+            if abs(verticalAmount) > abs(horizontalAmount) {
+                // It's a vertical swipe.
+                if verticalAmount < 0 {
+                    print("Gesture: SWIPE UP")
+                    // Here you could trigger other actions, e.g., show bookmarks.
+                } else {
+                    print("Gesture: SWIPE DOWN")
+                    isFocused.wrappedValue = false // Swiping down could dismiss the keyboard.
+                }
+            } else {
+                // It's a horizontal swipe.
+                if horizontalAmount < 0 {
+                    print("Gesture: SWIPE LEFT")
+                    // Here you could trigger actions like "go to next tab".
+                } else {
+                    print("Gesture: SWIPE RIGHT")
+                    // Here you could trigger actions like "go to previous tab".
+                }
+            }
+        }
     
     private func handleSubmit() {
         print("handleSubmit")

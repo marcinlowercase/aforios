@@ -18,6 +18,8 @@ class InteractiveWKWebView: WKWebView {
     // reliable way to detect any interaction before it's even processed
     // as a scroll, tap, etc.
     override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
+//        print("hitTest")
+//        print("point \(point)")
         // As soon as a touch is detected, we call our closure.
         onUserInteraction?()
         
@@ -61,6 +63,8 @@ struct WebView: UIViewRepresentable {
             let request = URLRequest(url: url)
             uiView.load(request)
         }
+        
+        uiView.isUserInteractionEnabled = !statesManager.uiStates.isBottomPanelVisible
         uiView.layer.cornerRadius = settingsManager.settings.deviceCornerRadius
     }
     

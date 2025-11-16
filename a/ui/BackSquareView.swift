@@ -12,7 +12,7 @@ struct BackSquareView: View {
     @Environment(StatesManager.self) private var statesManager
     var body: some View {
         HStack (spacing: 0) {
-            Spacer()
+            if !statesManager.persistentStates.isBackSquareLeft { Spacer() }
             ZStack {
                 Image("back")
                     .resizable()
@@ -39,16 +39,30 @@ struct BackSquareView: View {
                         
                         // To make the gesture feel intentional, we'll set a threshold.
                         // The user must swipe up at least 50 points.
-                        let swipeUpThreshold: CGFloat = -50
+                        let verticalSwipeThreshold: CGFloat = -50
+                        let horizontalSwipeThreshold: CGFloat = 50
                         
                         // We also check if the swipe was more vertical than horizontal.
-                        if verticalDistance < swipeUpThreshold && abs(verticalDistance) > abs(horizontalDistance) {
+                        if verticalDistance < verticalSwipeThreshold && abs(verticalDistance) > abs(horizontalDistance) {
+                            print("Back Square Swipe Up")
                             // If the conditions are met, it's a clear swipe up.
                             // Now, we change the state.
                             statesManager.uiStates.isBottomPanelVisible = true
+                        } else if abs(horizontalDistance) > horizontalSwipeThreshold {
+                            if horizontalDistance > 0 {
+                                print("Back Square Swipe Right")
+                                statesManager.persistentStates.isBackSquareLeft = false
+                            } else {
+                                print("Back Square Swipe Left")
+
+                                statesManager.persistentStates.isBackSquareLeft = true
+                            }
                         }
                     }
             )
+            
+            if statesManager.persistentStates.isBackSquareLeft { Spacer() }
+
         }
         
         
