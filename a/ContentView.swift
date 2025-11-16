@@ -295,8 +295,6 @@ struct BottomPanelView: View {
     @Environment(StatesManager.self) private var statesManager
 
 
-    
-    
     var isURLBarFocused: FocusState<Bool>.Binding
 
 
@@ -311,7 +309,8 @@ struct BottomPanelView: View {
             
         }
         .padding(settingsManager.settings.padding)
-        .gesture(
+        .background(.clear)
+        .highPriorityGesture(
             DragGesture()
                 .onEnded { value in
                     // 'value.translation' tells us how far the finger moved.
@@ -471,17 +470,20 @@ struct UrlBarView: View {
                 
             }
         }
-        .gesture(
+       
+        .frame(height: settingsManager.settings.heightForLayer(layer: 1))
+        .background(.clear)
+        .contentShape(Rectangle())
+        .glassEffect(isFocused.wrappedValue ? .regular.interactive(): .clear.interactive(), in: .rect(cornerRadius: settingsManager.settings.cornerRadiusForLayer(layer: 1)))
+        
+        .highPriorityGesture(
             DragGesture(minimumDistance: 0) // minimumDistance: 0 lets it detect taps
                 .onEnded { value in
+                    print("Url Bar DragGesture.onEnded")
                     // This code runs when the user lifts their finger.
                     handleGesture(value)
                 }
         )
-        .frame(height: settingsManager.settings.heightForLayer(layer: 1))
-        .glassEffect(isFocused.wrappedValue ? .regular.interactive(): .clear.interactive(), in: .rect(cornerRadius: settingsManager.settings.cornerRadiusForLayer(layer: 1)))
-        
-        
         .onAppear{
             $urlText.wrappedValue = statesManager.persistentStates.currentUrl
         }
