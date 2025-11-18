@@ -301,16 +301,63 @@ struct BottomPanelView: View {
     
     var body: some View {
         
-        VStack {
-            
-            UrlBarView(
-                isFocused: isURLBarFocused,
+        ZStack {
+            VStack {
+                
+//                UrlBarView(
+//                    isFocused: isURLBarFocused,
+//                )
+                
+            }
+            .frame(height: settingsManager.settings.heightForLayer(layer: 1))
+            .frame(maxWidth: .infinity)
+            .padding(settingsManager.settings.padding)
+            .background(.clear)
+            .background(.yellow)
+            .highPriorityGesture(
+                DragGesture()
+                    .onEnded { value in
+                        // 'value.translation' tells us how far the finger moved.
+                        // A swipe up results in a NEGATIVE height (vertical) translation.
+                        let verticalDistance = value.translation.height
+                        let horizontalDistance = value.translation.width
+                        
+                        // To make the gesture feel intentional, we'll set a threshold.
+                        // The user must swipe up at least 50 points.
+                        let verticalSwipeThreshold: CGFloat = 50
+                        let horizontalSwipeThreshold: CGFloat = 50
+                        
+                        // We also check if the swipe was more vertical than horizontal.
+                        if abs(verticalDistance) > verticalSwipeThreshold && abs(verticalDistance) > abs(horizontalDistance) {
+                            
+                            if verticalDistance < 0 {
+                                print("Bottom Panel Swipe Up")
+                            } else {
+                                print("Bottom Panel Swipe Up")
+
+                            }
+                          
+                        } else if abs(horizontalDistance) > horizontalSwipeThreshold {
+                            if horizontalDistance > 0 {
+                                print("Bottom Panel Swipe Right")
+                            } else {
+                                print("Bottom Panel Swipe Left")
+                            }
+                        }
+                    }
             )
             
+            // like LaunchedEffect in Compose
+            .onChange(of: isURLBarFocused.wrappedValue) {
+                
+                if !isURLBarFocused.wrappedValue {
+                    
+                }
+            }
         }
-        .padding(settingsManager.settings.padding)
-        .background(.clear)
-        .highPriorityGesture(
+        .contentShape(Rectangle())
+
+        .gesture(
             DragGesture()
                 .onEnded { value in
                     // 'value.translation' tells us how far the finger moved.
@@ -327,29 +374,24 @@ struct BottomPanelView: View {
                     if abs(verticalDistance) > verticalSwipeThreshold && abs(verticalDistance) > abs(horizontalDistance) {
                         
                         if verticalDistance < 0 {
-                            print("Bottom Panel Swipe Up")
+                            print("Back Square Swipe Up")
+                            statesManager.uiStates.isBottomPanelVisible = true
                         } else {
-                            print("Bottom Panel Swipe Up")
-
+                            
                         }
                       
                     } else if abs(horizontalDistance) > horizontalSwipeThreshold {
                         if horizontalDistance > 0 {
-                            print("Bottom Panel Swipe Right")
+                            print("Back Square Swipe Right")
+                            statesManager.persistentStates.isBackSquareLeft = false
                         } else {
-                            print("Bottom Panel Swipe Left")
+                            print("Back Square Swipe Left")
+
+                            statesManager.persistentStates.isBackSquareLeft = true
                         }
                     }
                 }
         )
-        
-        // like LaunchedEffect in Compose
-        .onChange(of: isURLBarFocused.wrappedValue) {
-            
-            if !isURLBarFocused.wrappedValue {
-                
-            }
-        }
         
     }
     
@@ -364,7 +406,7 @@ struct BackSquareView: View {
         HStack (spacing: 0) {
             if !statesManager.persistentStates.isBackSquareLeft { Spacer() }
             ZStack {
-                Image("back")
+                Image("TomTransparent")
                     .resizable()
                     .scaledToFit()
                     .frame(width: 100, height: 100)
