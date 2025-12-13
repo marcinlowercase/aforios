@@ -18,20 +18,32 @@ import Combine
 class InteractiveWKWebView: WKWebView {
     /// This closure will be called whenever the user touches the web view.
     var onUserInteraction: (() -> Void)?
+    
+    var bottomObscuredHeight: CGFloat = 0
 
     // We override hitTest, which is a fundamental UIKit method called
     // whenever a touch occurs within a view's bounds. This is the most
     // reliable way to detect any interaction before it's even processed
-    // as a scroll, tap, etc.
+    // as a scroll, tap, etc.A
     override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
 //        print("hitTest")
 //        print("point \(point)")
-        // As soon as a touch is detected, we call our closure.
-        onUserInteraction?()
         
-        // It's crucial to call the superclass's implementation so that the
-        // web view can continue to handle the touch normally (e.g., clicking links).
-        return super.hitTest(point, with: event)
+        
+        let hitView = super.hitTest(point, with: event)
+        
+        let safeZoneLimit = self.bounds.height - bottomObscuredHeight
+
+        if point.y < safeZoneLimit {
+                   onUserInteraction?()
+               }//        if hitView != nil {
+//            // We defer the state update slightly to avoid conflicts during the hitTest runloop
+//            DispatchQueue.main.async {
+//                self.onUserInteraction?()
+//            }
+//        }
+        
+        return hitView
     }
 }
 
@@ -44,6 +56,8 @@ struct PersistentStates {
 
 struct UIStates {
     var isBottomPanelVisible: Bool = true
+    var isTapBottomPanel: Bool = false
+    var bottomPanelHeight: CGFloat = 0
 }
 
 
@@ -186,6 +200,14 @@ func domain(from urlString: String) -> String? {
     return host.hasPrefix("www.") ? String(host.dropFirst(4)) : host
 }
 
+// MARK: Preference Key
+
+struct ViewHeightKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
+    }
+}
 
 // MARK: View
 
@@ -245,8 +267,13 @@ struct WebView: UIViewRepresentable {
         let webView = InteractiveWKWebView()
         
         webView.onUserInteraction = {
+            print("onUserInteraction")
+         
             if (statesManager.uiStates.isBottomPanelVisible) {
                 statesManager.uiStates.isBottomPanelVisible = false
+            }
+            else {
+                print("NOTFI")
             }
         }
         webView.navigationDelegate = context.coordinator
@@ -257,7 +284,15 @@ struct WebView: UIViewRepresentable {
     }
     
     func updateUIView(_ uiView: WKWebView, context: Context) {
-        // ... (rest of updateUIView)
+        
+        guard let interactiveWebView = uiView as? InteractiveWKWebView else { return }
+        
+        if statesManager.uiStates.isBottomPanelVisible {
+            interactiveWebView.bottomObscuredHeight = statesManager.uiStates.bottomPanelHeight
+        } else {
+            interactiveWebView.bottomObscuredHeight = 0
+        }
+        
         if let currentWebViewURL = uiView.url?.absoluteString, currentWebViewURL == statesManager.persistentStates.currentUrl {
             // Do nothing
         } else if let url = URL(string: statesManager.persistentStates.currentUrl) {
@@ -265,7 +300,6 @@ struct WebView: UIViewRepresentable {
             uiView.load(request)
         }
         
-        uiView.isUserInteractionEnabled = !statesManager.uiStates.isBottomPanelVisible
         uiView.layer.cornerRadius = settingsManager.settings.deviceCornerRadius
     }
     
@@ -301,62 +335,29 @@ struct BottomPanelView: View {
     
     var body: some View {
         
-        ZStack {
-            VStack {
-                
-//                UrlBarView(
-//                    isFocused: isURLBarFocused,
-//                )
-                
-            }
-            .frame(height: settingsManager.settings.heightForLayer(layer: 1))
-            .frame(maxWidth: .infinity)
-            .padding(settingsManager.settings.padding)
-            .background(.clear)
-            .background(.yellow)
-            .highPriorityGesture(
-                DragGesture()
-                    .onEnded { value in
-                        // 'value.translation' tells us how far the finger moved.
-                        // A swipe up results in a NEGATIVE height (vertical) translation.
-                        let verticalDistance = value.translation.height
-                        let horizontalDistance = value.translation.width
-                        
-                        // To make the gesture feel intentional, we'll set a threshold.
-                        // The user must swipe up at least 50 points.
-                        let verticalSwipeThreshold: CGFloat = 50
-                        let horizontalSwipeThreshold: CGFloat = 50
-                        
-                        // We also check if the swipe was more vertical than horizontal.
-                        if abs(verticalDistance) > verticalSwipeThreshold && abs(verticalDistance) > abs(horizontalDistance) {
-                            
-                            if verticalDistance < 0 {
-                                print("Bottom Panel Swipe Up")
-                            } else {
-                                print("Bottom Panel Swipe Up")
-
-                            }
-                          
-                        } else if abs(horizontalDistance) > horizontalSwipeThreshold {
-                            if horizontalDistance > 0 {
-                                print("Bottom Panel Swipe Right")
-                            } else {
-                                print("Bottom Panel Swipe Left")
-                            }
-                        }
-                    }
+        
+        VStack {
+            
+            UrlBarView(
+                isFocused: isURLBarFocused,
             )
             
-            // like LaunchedEffect in Compose
-            .onChange(of: isURLBarFocused.wrappedValue) {
-                
-                if !isURLBarFocused.wrappedValue {
-                    
-                }
-            }
         }
+        .frame(maxWidth: .infinity)
+        .padding(settingsManager.settings.padding)
         .contentShape(Rectangle())
-
+        .allowsHitTesting(true)
+        .background(.clear)
+        .readHeight { height in
+                    // 4. IMPORTANT: Wrap in main.async to ensure update happens
+                    // after the view hierarchy is locked.
+                    DispatchQueue.main.async {
+                        if statesManager.uiStates.bottomPanelHeight != height {
+                            print("Bottom Panel Height Updated: \(height)")
+                            statesManager.uiStates.bottomPanelHeight = height
+                        }
+                    }
+                }
         .gesture(
             DragGesture()
                 .onEnded { value in
@@ -373,25 +374,25 @@ struct BottomPanelView: View {
                     // We also check if the swipe was more vertical than horizontal.
                     if abs(verticalDistance) > verticalSwipeThreshold && abs(verticalDistance) > abs(horizontalDistance) {
                         
+                        statesManager.uiStates.isTapBottomPanel = true
                         if verticalDistance < 0 {
-                            print("Back Square Swipe Up")
-                            statesManager.uiStates.isBottomPanelVisible = true
-                        } else {
+                            print("Bottom Panel Swipe Up")
                             
+                        } else {
+                            print("Bottom Panel Swipe Up")
+
                         }
                       
                     } else if abs(horizontalDistance) > horizontalSwipeThreshold {
                         if horizontalDistance > 0 {
-                            print("Back Square Swipe Right")
-                            statesManager.persistentStates.isBackSquareLeft = false
+                            print("Bottom Panel Swipe Right")
                         } else {
-                            print("Back Square Swipe Left")
-
-                            statesManager.persistentStates.isBackSquareLeft = true
+                            print("Bottom Panel Swipe Left")
                         }
                     }
                 }
         )
+        
         
     }
     
@@ -471,7 +472,6 @@ struct UrlBarView: View {
     @Environment(StatesManager.self) private var statesManager
     
     
-    
     var isFocused: FocusState<Bool>.Binding
     @State private var urlText: String = ""
     
@@ -486,6 +486,7 @@ struct UrlBarView: View {
                 .onSubmit { handleSubmit() }
                 .submitLabel(.go)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+                .allowsHitTesting(isFocused.wrappedValue)
                 .opacity(isFocused.wrappedValue ? 1 : 0) // show only when focused
                 .onTapGesture {
                     isFocused.wrappedValue = true
@@ -518,14 +519,14 @@ struct UrlBarView: View {
         .contentShape(Rectangle())
         .glassEffect(isFocused.wrappedValue ? .regular.interactive(): .clear.interactive(), in: .rect(cornerRadius: settingsManager.settings.cornerRadiusForLayer(layer: 1)))
         
-        .highPriorityGesture(
-            DragGesture(minimumDistance: 0) // minimumDistance: 0 lets it detect taps
-                .onEnded { value in
-                    print("Url Bar DragGesture.onEnded")
-                    // This code runs when the user lifts their finger.
-                    handleGesture(value)
-                }
-        )
+//        .highPriorityGesture(
+//            DragGesture(minimumDistance: 0) // minimumDistance: 0 lets it detect taps
+//                .onEnded { value in
+//                    print("Url Bar DragGesture.onEnded")
+//                    // This code runs when the user lifts their finger.
+//                    handleGesture(value)
+//                }
+//        )
         .onAppear{
             $urlText.wrappedValue = statesManager.persistentStates.currentUrl
         }
@@ -600,3 +601,15 @@ struct UrlBarView: View {
 }
 
 
+
+extension View {
+    func readHeight(onChange: @escaping (CGFloat) -> Void) -> some View {
+        self.overlay(
+            GeometryReader { proxy in
+                Color.clear
+                    .preference(key: ViewHeightKey.self, value: proxy.size.height)
+            }
+        )
+        .onPreferenceChange(ViewHeightKey.self, perform: onChange)
+    }
+}
