@@ -58,6 +58,7 @@ struct UIStates {
     var isBottomPanelVisible: Bool = true
     var isTapBottomPanel: Bool = false
     var bottomPanelHeight: CGFloat = 0
+    var keyboardHeight: CGFloat = 0
 }
 
 
@@ -74,6 +75,9 @@ class StatesManager {
     
     var uiStates: UIStates
     
+    private var cancellables = Set<AnyCancellable>()
+
+    
     private enum Keys {
         static let currentUrl = "current_url"
         
@@ -88,7 +92,33 @@ class StatesManager {
             currentUrl: currentUrl
         )
         self.uiStates = UIStates()
+        
+        setupKeyboardObservers()
     }
+    
+    private func setupKeyboardObservers() {
+            // Listen for Keyboard Show
+            NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)
+                .compactMap { $0.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect }
+                .map { $0.height }
+                .sink { [weak self] height in
+                    print("Keyboard appeared: \(height)")
+                    DispatchQueue.main.async {
+                        self?.uiStates.keyboardHeight = height
+                    }
+                }
+                .store(in: &cancellables)
+            
+            // Listen for Keyboard Hide
+            NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)
+                .sink { [weak self] _ in
+                    print("Keyboard hidden")
+                    DispatchQueue.main.async {
+                        self?.uiStates.keyboardHeight = 0
+                    }
+                }
+                .store(in: &cancellables)
+        }
     
     private func save() {
         let defaults = UserDefaults.standard
@@ -161,7 +191,7 @@ class SettingsManager {
     init() {
         let defaults = UserDefaults.standard
         let padding = defaults.double(forKey: Keys.padding) == 0 ? 8.0 : defaults.double(forKey: Keys.padding)
-        let cornerRadius = defaults.double(forKey: Keys.deviceCornerRadius) == 0 ? 54.85 : defaults.double(forKey: Keys.deviceCornerRadius)
+        let cornerRadius = defaults.double(forKey: Keys.deviceCornerRadius) == 0 ? 44.0 : defaults.double(forKey: Keys.deviceCornerRadius)
         let url = defaults.string(forKey: Keys.defaultUrl) ?? "https://arc.net"
         let speed = defaults.double(forKey: Keys.animationSpeed) == 0 ? 300.0 : defaults.double(forKey: Keys.animationSpeed)
         let height = defaults.double(forKey: Keys.minBaseCornerRadius) == 0 ? 50.0 : defaults.double(forKey: Keys.minBaseCornerRadius)
@@ -229,12 +259,24 @@ struct ContentView: View {
             
             VStack {
                 Spacer()
-                if (statesManager.uiStates.isBottomPanelVisible) {
-                    BottomPanelView(
-                        isURLBarFocused : $isURLBarFocused,
-                    )
-                } else {
-                    BackSquareView()
+                ZStack(alignment: .bottom) {
+                    
+                    // 1. The Back Square (Fades in when panel is gone)
+                    if !statesManager.uiStates.isBottomPanelVisible {
+                        BackSquareView()
+                            .transition(.opacity.animation(.easeInOut(duration: 0.2)))
+                            .zIndex(0) // Ensure it sits behind
+                    }
+                    
+                    // 2. The Bottom Panel (Slides up/down)
+                    if statesManager.uiStates.isBottomPanelVisible {
+                        BottomPanelView(
+                            isURLBarFocused: $isURLBarFocused
+                        )
+                        // This creates the "Android Slide from Bottom" effect
+                        .transition(.move(edge: .bottom))
+                        .zIndex(1) // Ensure it slides OVER the empty space
+                    }
                 }
                 
                 
@@ -268,9 +310,32 @@ struct WebView: UIViewRepresentable {
         
         webView.onUserInteraction = {
             print("onUserInteraction")
-         
-            if (statesManager.uiStates.isBottomPanelVisible) {
-                statesManager.uiStates.isBottomPanelVisible = false
+            
+            let isKeyboardUp = statesManager.uiStates.keyboardHeight > 0
+            
+            if isKeyboardUp {
+                // CASE A: Keyboard is UP
+                // Force the keyboard to slide down gracefully first
+                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                
+                // Wait for the keyboard animation (approx 0.3s) before hiding the panel
+                // This prevents the "sudden disappearance" glitch
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    if statesManager.uiStates.isBottomPanelVisible {
+                        withAnimation(.snappy(duration: 0.35)) {
+                            statesManager.uiStates.isBottomPanelVisible = false
+                        }
+                    }
+                }
+            }
+            else if statesManager.uiStates.isBottomPanelVisible {
+                // CASE B: Keyboard is DOWN
+                // Hide the panel immediately with animation
+                DispatchQueue.main.async {
+                    withAnimation(.snappy(duration: 0.35)) {
+                        statesManager.uiStates.isBottomPanelVisible = false
+                    }
+                }
             }
             else {
                 print("NOTFI")
@@ -280,6 +345,7 @@ struct WebView: UIViewRepresentable {
         // ... (rest of makeUIView)
         webView.layer.cornerRadius = settingsManager.settings.deviceCornerRadius
         webView.clipsToBounds = true
+        webView.isUserInteractionEnabled = true
         return webView
     }
     
@@ -288,7 +354,8 @@ struct WebView: UIViewRepresentable {
         guard let interactiveWebView = uiView as? InteractiveWKWebView else { return }
         
         if statesManager.uiStates.isBottomPanelVisible {
-            interactiveWebView.bottomObscuredHeight = statesManager.uiStates.bottomPanelHeight
+            let totalObscured = statesManager.uiStates.bottomPanelHeight + statesManager.uiStates.keyboardHeight
+            interactiveWebView.bottomObscuredHeight = totalObscured
         } else {
             interactiveWebView.bottomObscuredHeight = 0
         }
@@ -440,7 +507,9 @@ struct BackSquareView: View {
                             
                             if verticalDistance < 0 {
                                 print("Back Square Swipe Up")
-                                statesManager.uiStates.isBottomPanelVisible = true
+                                withAnimation(.snappy(duration: 0.35)) {
+                                    statesManager.uiStates.isBottomPanelVisible = true
+                                }
                             } else {
                                 
                             }
